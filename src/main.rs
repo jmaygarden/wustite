@@ -1,30 +1,40 @@
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 
-fn main() {
-    env_logger::init();
+mod gpu;
 
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
+fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
-    let mut gpu = runtime.block_on(async {
-        tokio::spawn(async move {
-            loop {
-                let event = event_rx.recv().await.unwrap();
 
-                println!("{:?}", event);
-            }
-        });
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        env_logger::init();
+        pollster::block_on(run(event_loop, window));
+    }
 
-       gpu::Gpu::new(&window).await
-    });
+    #[cfg(target_arch = "wasm32")]
+    {
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+        console_log::init().expect("could not initialize logger");
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|window| window.document())
+            .and_then(|document| document.body())
+            .and_then(|body| {
+                body.append_child(&web_sys::Element::from(window.canvas()))
+                    .ok()
+            })
+            .expect("couldn't append canvas to document body");
+        wasm_bindgen_futures::spawn_local(run(event_loop, window));
+    }
+}
+
+async fn run(event_loop: EventLoop<()>, window: Window) {
+    let mut gpu = gpu::Gpu::new(&window).await;
 
     event_loop.run(move |event, _target, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -68,11 +78,5 @@ fn main() {
             } => *control_flow = ControlFlow::Exit,
             _ => {}
         }
-
-        if let Some(event) = event.to_static() {
-            event_tx.send(event).unwrap();
-        }
     });
 }
-
-mod gpu;
