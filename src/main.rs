@@ -1,10 +1,12 @@
+use crate::state::State;
 use winit::{
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::{Window, WindowBuilder},
 };
 
-mod gpu;
+mod camera;
+mod state;
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -34,7 +36,7 @@ fn main() {
 }
 
 async fn run(event_loop: EventLoop<()>, window: Window) {
-    let mut gpu = gpu::Gpu::new(&window).await;
+    let mut state = State::new(&window).await;
 
     event_loop.run(move |event, _target, control_flow| {
         *control_flow = ControlFlow::Wait;
@@ -44,11 +46,12 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                gpu.update();
+                println!("update");
+                state.update();
 
-                match gpu.render() {
+                match state.render() {
                     Ok(_) => {}
-                    Err(wgpu::SurfaceError::Lost) => gpu.resize(gpu.size()),
+                    Err(wgpu::SurfaceError::Lost) => state.resize(state.size()),
                     Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     Err(e) => eprintln!("{:?}", e),
                 }
@@ -57,16 +60,16 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
                 ref event,
                 window_id,
             } if window_id == window.id() => {
-                if !gpu.input(event) {
+                if !state.input(event) {
                     match event {
                         WindowEvent::CloseRequested => {
                             *control_flow = ControlFlow::Exit;
                         }
                         WindowEvent::Resized(physical_size) => {
-                            gpu.resize(*physical_size);
+                            state.resize(*physical_size);
                         }
                         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                            gpu.resize(**new_inner_size)
+                            state.resize(**new_inner_size)
                         }
                         _ => {}
                     }
