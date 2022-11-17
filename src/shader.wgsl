@@ -1,24 +1,23 @@
 // Vertex shader
 
-[[block]] // 1.
 struct CameraUniform {
-    view_proj: mat4x4<f32>;
+    view_proj: mat4x4<f32>,
 };
 
-[[group(0), binding(0)]] // 2.
+@group(0) @binding(0)
 var<uniform> camera: CameraUniform;
 
 struct VertexInput {
-    [[location(0)]] position: vec3<f32>;
-    [[location(1)]] color: vec3<f32>;
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec3<f32>,
 };
 
 struct VertexOutput {
-    [[builtin(position)]] clip_position: vec4<f32>;
-    [[location(0)]] color: vec3<f32>;
+    @builtin(position) clip_position: vec4<f32>,
+    @location(0) color: vec3<f32>,
 };
 
-[[stage(vertex)]]
+@vertex
 fn vs_main(
     model: VertexInput,
 ) -> VertexOutput {
@@ -30,7 +29,7 @@ fn vs_main(
 
 // Fragment shader
 
-[[stage(fragment)]]
-fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
+@fragment
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     return vec4<f32>(in.color, 1.0);
 }
